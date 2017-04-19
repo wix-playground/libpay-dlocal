@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>libpay-dlocal</artifactId>
+    <name>libpay dLocal payment gateway adapter</name>
+    <description>dLocal payment gateway</description>
+
+
+    <parent>
+        <groupId>com.wix.pay</groupId>
+        <artifactId>libpay-dlocal-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../libpay-dlocal-parent</relativePath>
+    </parent>
+
+
+    <developers>
+        <developer>
+            <name>Taras Petushkov</name>
+            <email>tarasp@wix.com</email>
+            <roles>
+                <role>owner</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.wix.pay</groupId>
+            <artifactId>libpay-api</artifactId>
+            <version>${com.wix.pay.libpay.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client</artifactId>
+            <version>${com.google.http.client.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-native_${scala.dependencies.version}</artifactId>
+            <version>${org.json4js.version}</version>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>com.wix.pay</groupId>
+            <artifactId>libpay-testkit</artifactId>
+            <version>${com.wix.pay.libpay.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.wix.pay</groupId>
+            <artifactId>libpay-dlocal-testkit</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>libpay-dlocal-all</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>libpay dLocal payment gateway adapter aggregator</name>
+    <description>libpay module for dLocal payment gateway</description>
+
+
+    <parent>
+        <groupId>com.wix.pay</groupId>
+        <artifactId>libpay-dlocal-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>libpay-dlocal-parent</relativePath>
+    </parent>
+
+
+    <scm>
+        <url>https://github.com/wix/libpay-dlocal</url>
+        <connection>scm:git:git://github.com/wix/libpay-dlocal.git</connection>
+        <developerConnection>scm:git:git@github.com:wix/libpay-dlocal.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+
+    <modules>
+        <module>libpay-dlocal-parent</module>
+        <module>libpay-dlocal</module>
+        <module>libpay-dlocal-testkit</module>
+    </modules>
+</project>

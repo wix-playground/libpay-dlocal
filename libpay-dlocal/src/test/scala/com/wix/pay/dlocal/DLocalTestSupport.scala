@@ -12,8 +12,8 @@ import scala.util.{Random, Try}
 trait DLocalTestSupport extends LibPayTestSupport {
 
 
-  val merchantCredentials = DLocalMerchant("some merchant id", "some sub code")
-  val merchantCredentialsAsString = JsonDLocalMerchantParser.stringify(merchantCredentials)
+  val merchant = DLocalMerchant("some merchant id", "some sub code")
+  val merchantAsString = JsonDLocalMerchantParser.stringify(merchant)
 
   val documentId = randomStringWithLength(26)
 

@@ -5,7 +5,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.wix.pay.creditcard.CreditCard
 import com.wix.pay.model.{Customer, Deal, Payment}
 import com.wix.pay.{PaymentErrorException, PaymentException, PaymentGateway, PaymentRejectedException}
-import org.json4s.DefaultFormats
+import org.json4s.{DefaultFormats, JValue}
 import org.json4s.native.JsonMethods.parse
 
 import scala.collection.JavaConversions.mapAsJavaMap
@@ -17,24 +17,28 @@ class DLocalGateway(settings: DLocalGatewaySettings) extends PaymentGateway {
   private val requestFactory: HttpRequestFactory = new NetHttpTransport().createRequestFactory()
 
   override def sale(merchantKey: String, creditCard: CreditCard, payment: Payment, customer: Option[Customer], deal: Option[Deal]): Try[String] = {
-    val merchantCredentials = JsonDLocalMerchantParser.parse(merchantKey)
-    val saleRequest = DLocalSaleRequest(settings, merchantCredentials, creditCard, payment, customer, deal)
+    val merchant = JsonDLocalMerchantParser.parse(merchantKey)
+    val saleRequest = DLocalSaleRequest(settings, merchant, creditCard, payment, customer, deal)
 
-    execute {
-      val response: HttpResponse = requestFactory.buildPostRequest(
-        new GenericUrl(s"${settings.url}/api_curl/cc/sale"),
-        new UrlEncodedContent(mapAsJavaMap(saleRequest.asMap))
-      ).execute()
-
-      try {
-        (parseAndVerify(response) \ "x_document").extract[String]
-      } finally {
-        response.disconnect()
-      }
-    }
+    execute(
+      url = s"${settings.url}/api_curl/cc/sale",
+      request = saleRequest,
+      extract = response => (response \ "x_document").extract[String]
+    )
   }
 
-  private def execute(result: => String) = Try(result).recover {
+  def execute(url: String, request: DLocalRequest, extract: JValue => String): Try[String] = Try {
+    val response: HttpResponse = requestFactory.buildPostRequest(
+      new GenericUrl(url),
+      new UrlEncodedContent(mapAsJavaMap(request.asMap))
+    ).execute()
+
+    try {
+      extract(parseAndVerify(response))
+    } finally {
+      response.disconnect()
+    }
+  }.recover {
     case e: PaymentException => throw e
     case e: Exception => throw PaymentErrorException(e.getMessage, e)
   }

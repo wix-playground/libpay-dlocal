@@ -83,7 +83,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
 
     def givenSaleRequest = driver.aSaleRequest()
 
-    def sale() = gateway.sale(merchantCredentialsAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
+    def sale() = gateway.sale(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
 
     def lastRequest = {
       val request = driver.lastRequest

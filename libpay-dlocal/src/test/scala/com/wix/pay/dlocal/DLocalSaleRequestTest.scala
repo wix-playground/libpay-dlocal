@@ -134,11 +134,11 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
     }
 
     "contain x_merchant_id" in new ctx {
-      someRequest.asMap must havePair("x_merchant_id" -> merchantCredentials.merchantId)
+      someRequest.asMap must havePair("x_merchant_id" -> merchant.merchantId)
     }
 
     "contain x_sub_code" in new ctx {
-      someRequest.asMap must havePair("x_sub_code" -> merchantCredentials.subCode)
+      someRequest.asMap must havePair("x_sub_code" -> merchant.subCode)
     }
   }
 
@@ -146,7 +146,7 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
 
     val someSetting = DLocalGatewaySettings(url = "some url", login = "some login", transKey = "some key", secretKey = "secret key")
 
-    val someRequest = DLocalSaleRequest(someSetting, merchantCredentials, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
+    val someRequest = DLocalSaleRequest(someSetting, merchant, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
 
     val someRequestHash = "69BAB0CE5EF70AD4FCF8C69216BDC3420B0F14C74BB8933FC77F19F8BA0CE6D2" // re-calc here?
 

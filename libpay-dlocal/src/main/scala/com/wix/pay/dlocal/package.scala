@@ -2,12 +2,39 @@ package com.wix.pay
 
 import javax.crypto.spec.SecretKeySpec
 
+import com.google.api.client.http.HttpResponse
 import com.wix.pay.creditcard.CreditCard
 import com.wix.pay.model.{Customer, Deal, Payment}
+import org.json4s.native.JsonMethods
+import org.json4s.{DefaultFormats, JValue}
 
 package object dlocal {
 
+  private val ApiVersion = "4"
+  private val ResponseContentType = "json"
+
+  private val SuccessResponseStatus = "OK"
+  private val NotPresent = "NA"
+
+  private val PendingTransactionStatus = "7"
+  private val RejectedTransactionStatus = "8"
+  private val ApprovedTransactionStatus = "9"
+  private val AuthorizedTransactionStatus = "11"
+
+  private val CheckSumEncoding = "UTF-8"
+  private val CheckSumHashingAlgorithm = "HmacSHA256"
+
+  private implicit val formats = DefaultFormats
+
   private[dlocal] trait DLocalRequest {
+    def asMap: Map[String, String]
+  }
+
+  private[dlocal] trait DLocalResponseHandler {
+    def handle(response: HttpResponse): String
+  }
+
+  private[dlocal] trait DLocalBaseRequest extends DLocalRequest {
     val settings: DLocalGatewaySettings
 
     val mandatoryFields: Map[String, String]
@@ -15,8 +42,8 @@ package object dlocal {
     val controlSumFields: Seq[String]
 
     val commonFields = Map(
-      "x_version" -> "4",
-      "type" -> "json",
+      "x_version" -> ApiVersion,
+      "type" -> ResponseContentType,
       "x_login" -> settings.login,
       "x_trans_key" -> settings.transKey
     )
@@ -25,12 +52,12 @@ package object dlocal {
       sign(commonFields ++ mandatoryFields ++ unbox(optionalFields))
     }
 
-    private def sign(allFields: Map[String, String]): Map[String, String] = {
-      val controlSumFieldValues = controlSumFields.flatMap(allFields.get).mkString
+    private def sign(fields: Map[String, String]): Map[String, String] = {
+      val controlSumFieldValues = controlSumFields.flatMap(fields.get).mkString
 
-      val controlSum = hmac(controlSumFieldValues, settings.secretKey)
+      val controlSum = hash(controlSumFieldValues, settings.secretKey)
 
-      allFields + ("control" -> controlSum)
+      fields + ("control" -> controlSum)
     }
   }
 
@@ -39,7 +66,7 @@ package object dlocal {
                                                creditCard: CreditCard,
                                                payment: Payment,
                                                customer: Option[Customer],
-                                               deal: Option[Deal]) extends DLocalRequest {
+                                               deal: Option[Deal]) extends DLocalBaseRequest {
 
     val cardPublicFields = creditCard.additionalFields.flatMap(_.publicFields)
     val billingAddress = cardPublicFields.flatMap(_.billingAddressDetailed)
@@ -71,7 +98,7 @@ package object dlocal {
       "x_phone" -> customer.flatMap(_.phone)
     )
 
-    val controlSumFields = Seq( // TODO think about dsl to mark mandatory fields to be used for checksum
+    val controlSumFields = Seq(
       "x_invoice",
       "x_amount",
       "x_currency",
@@ -86,18 +113,81 @@ package object dlocal {
     )
   }
 
-  private def unbox[T](request: Map[String, Option[T]]): Map[String, T] = request.filter(_._2.isDefined).mapValues(_.get)
+  private[dlocal] trait DLocalBaseResponseHandler extends DLocalResponseHandler {
 
-  private def hmac(message: String, key: String): String = {
-    val secret = new SecretKeySpec(key.getBytes("UTF-8"), "HmacSHA256")
-    val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+    def assertResponseIsOk(responseContent: JValue): Unit
 
-    mac.init(secret)
-    mac.doFinal(message.getBytes("UTF-8")).map("%02X" format _).mkString
+    def extractResult(responseContent: JValue): String
+
+    def handle(response: HttpResponse): String = {
+      try {
+        val responseContent = JsonMethods.parse(response.parseAsString())
+        commonAssertResponseIsOk(responseContent)
+        assertResponseIsOk(responseContent)
+        extractResult(responseContent)
+      } finally {
+        response.disconnect()
+      }
+    }
+
+    private def commonAssertResponseIsOk(responseContent: JValue): Unit = {
+      if (!(responseContent \ "status").extractOpt[String].contains(SuccessResponseStatus)) {
+        val errorCode = (responseContent \ "error_code").extractOpt[String].getOrElse(NotPresent)
+        val description = (responseContent \ "desc").extractOpt[String].getOrElse(NotPresent)
+        throw PaymentErrorException(s"Transaction failed($errorCode): $description")
+      }
+
+      if ((responseContent \ "result").extractOpt[String].contains(RejectedTransactionStatus)) {
+        val description = (responseContent \ "desc").extractOpt[String].getOrElse(NotPresent)
+        throw PaymentRejectedException(description)
+      }
+
+      if ((responseContent \ "result").extractOpt[String].contains(PendingTransactionStatus)) {
+        throw PaymentErrorException("Pending transactions are not supported")
+      }
+    }
   }
 
-  private def failWithMissingField(fieldName: String): String = {
-    throw new IllegalArgumentException(s"'$fieldName' must be given")
+  private[dlocal] object DLocalSaleResponseHandler extends DLocalBaseResponseHandler {
+    def assertResponseIsOk(responseContent: JValue): Unit = {
+      if (!(responseContent \ "result").extractOpt[String].contains(ApprovedTransactionStatus)) {
+        val result = (responseContent \ "result").extractOpt[String].getOrElse(NotPresent)
+        val description = (responseContent \ "desc").extractOpt[String].getOrElse(NotPresent)
+        throw PaymentErrorException(s"Transaction is not approved($result): $description")
+      }
+    }
+
+    def extractResult(responseContent: JValue): String = {
+      extractOrFail(responseContent)("x_document")
+    }
+  }
+
+  private[dlocal] object DLocalAuthorizeResponseHandler extends DLocalBaseResponseHandler {
+    def assertResponseIsOk(responseContent: JValue): Unit = {
+      if (!(responseContent \ "result").extractOpt[String].contains(AuthorizedTransactionStatus)) {
+        val result = (responseContent \ "result").extractOpt[String].getOrElse(NotPresent)
+        val description = (responseContent \ "desc").extractOpt[String].getOrElse(NotPresent)
+        throw PaymentErrorException(s"Transaction is not authorized($result): $description")
+      }
+    }
+
+    def extractResult(responseContent: JValue): String = {
+      def value = extractOrFail(responseContent) _
+
+      val authorization = DLocalAuthorization(value("x_auth_id"), value("x_invoice"), value("x_currency"))
+      JsonDLocalAuthorizationParser.stringify(authorization)
+    }
+  }
+
+
+  private def unbox[T](request: Map[String, Option[T]]): Map[String, T] = request.filter(_._2.isDefined).mapValues(_.get)
+
+  private def hash(message: String, key: String): String = {
+    val secret = new SecretKeySpec(key.getBytes(CheckSumEncoding), CheckSumHashingAlgorithm)
+    val mac = javax.crypto.Mac.getInstance(CheckSumHashingAlgorithm)
+
+    mac.init(secret)
+    mac.doFinal(message.getBytes(CheckSumEncoding)).map("%02X" format _).mkString
   }
 
   private implicit class `(String, Option[String]) --> (String, String)`(entry: (String, Option[String])) {
@@ -106,6 +196,13 @@ package object dlocal {
     }
   }
 
+  private def failWithMissingField(fieldName: String): String = {
+    throw new IllegalArgumentException(s"'$fieldName' must be given")
+  }
+
+  private def extractOrFail(responseContent: JValue)(field: String): String = {
+    (responseContent \ field).extractOpt[String].getOrElse {
+      throw PaymentErrorException(s"No $field in response")
+    }
+  }
 }
-
-

@@ -19,21 +19,43 @@ class DLocalDriver(port: Int) {
 
   def aSaleRequest() = new SaleRequest
 
+  def anAuthorizeRequest() = new AuthorizeRequest
+
+
   class SaleRequest {
     def returns(documentId: String): Unit = returns(transactionStatusCode = "9", description = "approved", documentId = documentId)
 
-    def returns(transactionStatusCode:String, description: String, documentId: String = "93148038"): Unit = respondWith(responseWithOk(transactionStatusCode, description, documentId))
+    def returns(transactionStatusCode: String, description: String, documentId: String = "93148038"): Unit =
+      respondWith(saleOkResponse(transactionStatusCode, description, documentId))
 
-    def isRejectedWith(description: String): Unit = respondWith(responseWithOk(result = "8", resultDescription = description))
+    def isRejectedWith(description: String): Unit = returns(transactionStatusCode = "8", description = description)
 
-    def isPending: Unit = respondWith(responseWithOk(result = "7", resultDescription = "in_process"))
+    def isPending: Unit = returns(transactionStatusCode = "7", description = "in_process")
 
     def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
 
     def failsWith(statusCode: StatusCode): Unit = respondWith(Map.empty, statusCode)
   }
 
-  private def responseWithOk(result:String, resultDescription:String, documentId: String = "93148038") = Map(
+  class AuthorizeRequest {
+    def returns(authId: String, invoiceId: String, currency: String): Unit =
+      respondWith(authOkResponse(result = "11", resultDescription = "TODO", authId, invoiceId, currency))
+
+    def returns(transactionStatusCode: String, description: String): Unit =
+      respondWith(authOkResponse(transactionStatusCode, description))
+
+    def isRejectedWith(description: String): Unit = returns(transactionStatusCode = "8", description = description)
+
+    def isPending: Unit = returns(transactionStatusCode = "7", description = "in_process")
+
+    def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
+
+    def failsWith(statusCode: StatusCode): Unit = respondWith(Map.empty, statusCode)
+  }
+
+  private def saleOkResponse(result: String,
+                             resultDescription: String,
+                             documentId: String = "93148038") = Map(
     "status" -> "OK",
     "desc" -> resultDescription,
     "control" -> "39BD42F98E7E8D7D451C851A1D06B030D010AF93A721BDCBFCD7F4E7852E9955",
@@ -45,6 +67,23 @@ class DLocalDriver(port: Int) {
     "x_amount" -> "10.01",
     "x_currency" -> "BRL",
     "cc_token" -> "",
+    "x_amount_paid" -> "10.01",
+    "cc_descriptor" -> "Wix"
+  )
+
+  private def authOkResponse(result: String,
+                             resultDescription: String,
+                             authId: String = "some auth id",
+                             invoiceId: String = "some invoice id ",
+                             currency: String = "BRL") = Map(
+    "status" -> "OK",
+    "desc" -> resultDescription,
+    "control" -> "39BD42F98E7E8D7D451C851A1D06B030D010AF93A721BDCBFCD7F4E7852E9955",
+    "result" -> result,
+    "x_invoice" -> invoiceId,
+    "x_auth_id" -> authId,
+    "x_amount" -> "10.01",
+    "x_currency" -> currency,
     "x_amount_paid" -> "10.01",
     "cc_descriptor" -> "Wix"
   )

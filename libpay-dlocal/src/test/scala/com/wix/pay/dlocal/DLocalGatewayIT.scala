@@ -1,13 +1,10 @@
 package com.wix.pay.dlocal
 
-import com.wix.pay.{PaymentErrorException, PaymentRejectedException}
-import org.specs2.matcher.Matcher
-import org.specs2.matcher.MustThrownMatchers._
 import org.specs2.mutable.SpecWithJUnit
 import org.specs2.specification.Scope
 import spray.http._
 
-import scala.util.{Random, Try}
+import scala.util.Try
 
 class DLocalGatewayIT extends SpecWithJUnit {
 
@@ -37,7 +34,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "return x_document if transaction approved" in new ctx {
       givenSaleRequest returns documentId
 
-      sale() must succeedWith(documentId)
+      sale() must beSucceedTryWith(documentId)
     }
 
     "fail if dLocal answers with error" in new ctx {
@@ -72,9 +69,60 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
   }
 
+  "authorize" should {
+    "send right http request" in new ctx {
+      Try(authorize())
+
+      lastRequest must beRequestWith(method = HttpMethods.POST)
+      lastRequest must beRequestWith(url = authorizeUrl)
+      lastRequest must beRequestThat(containsAllUrlEncodedParams = Seq(
+        "x_login" -> setting.login,
+        "x_trans_key" -> setting.transKey,
+        "x_version" -> "4",
+        "x_invoice" -> someDeal.invoiceId.get))
+    }
+
+    "return authorization if transaction authorized" in new ctx {
+      givenAuthorizeRequest returns(authorization.authId, authorization.invoiceId, authorization.currency)
+
+      authorize() must beSucceedTryWith(authorizationAsString)
+    }
+
+    "fail if dLocal answers with error" in new ctx {
+      givenAuthorizeRequest failsWith(someErrorCode, someErrorDescription)
+
+      authorize() must failWith(s"Transaction failed($someErrorCode): $someErrorDescription")
+    }
+
+
+    "fail if transaction rejected" in new ctx {
+      givenAuthorizeRequest isRejectedWith someRejectionDescription
+
+      authorize() must beRejectedWith(someRejectionDescription)
+    }
+
+    "fail if transaction pending" in new ctx {
+      givenAuthorizeRequest isPending
+
+      authorize() must failWith(pendingFlowIsNotSupportedMessage)
+    }
+
+    "fail if transaction is not authorized" in new ctx {
+      givenAuthorizeRequest returns (someTransactionStatusCode, someDescription)
+
+      authorize() must failWith(s"Transaction is not authorized($someTransactionStatusCode): $someDescription")
+    }
+
+    "handle http error" in new ctx {
+      givenAuthorizeRequest failsWith StatusCodes.InternalServerError
+
+      authorize() must failWith("500 Internal Server Error")
+    }
+  }
   trait ctx extends Scope with DLocalTestSupport {
     val dbLocalUrl = s"http://localhost:$probePort"
     val saleUrl = s"$dbLocalUrl/api_curl/cc/sale"
+    val authorizeUrl = s"$dbLocalUrl/api_curl/cc/auth"
 
     val setting = DLocalGatewaySettings(url = dbLocalUrl, login = "some login", transKey = "some key", secretKey = "secret key")
     val gateway = new DLocalGateway(setting)
@@ -82,8 +130,10 @@ class DLocalGatewayIT extends SpecWithJUnit {
     driver.reset()
 
     def givenSaleRequest = driver.aSaleRequest()
+    def givenAuthorizeRequest = driver.anAuthorizeRequest()
 
     def sale() = gateway.sale(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
+    def authorize() = gateway.authorize(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
 
     def lastRequest = {
       val request = driver.lastRequest

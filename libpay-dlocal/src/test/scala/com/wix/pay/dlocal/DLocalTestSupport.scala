@@ -15,6 +15,9 @@ trait DLocalTestSupport extends LibPayTestSupport {
   val merchant = DLocalMerchant("some merchant id", "some sub code")
   val merchantAsString = JsonDLocalMerchantParser.stringify(merchant)
 
+  val authorization = DLocalAuthorization(authId = "some authorization id", invoiceId = "some invoice id", currency = "BRL")
+  val authorizationAsString = JsonDLocalAuthorizationParser.stringify(authorization)
+
   val documentId = randomStringWithLength(26)
 
   val someErrorCode = "300"
@@ -48,7 +51,7 @@ trait DLocalTestSupport extends LibPayTestSupport {
   }
 
 
-  def succeedWith(value: String): Matcher[Try[String]] = beSuccessfulTry.withValue(value)
+  def beSucceedTryWith(value: String): Matcher[Try[String]] = beSuccessfulTry.withValue(value)
 
 
   def failWith(message: String): Matcher[Try[String]] = beFailedTry.like { case e: PaymentErrorException => e.message must contain(message) }

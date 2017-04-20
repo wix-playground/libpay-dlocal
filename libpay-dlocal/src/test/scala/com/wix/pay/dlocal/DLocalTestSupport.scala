@@ -23,9 +23,12 @@ trait DLocalTestSupport extends LibPayTestSupport {
   val someErrorCode = "300"
   val someErrorDescription = "Invalid params x_login"
   val someRejectionDescription = "cc_rejected_insufficient_amount"
-  val pendingFlowIsNotSupportedMessage = "Pending transactions are not supported"
+  val somePendingDescription = "in_process"
   val someTransactionStatusCode = "6"
   val someDescription = "Invalid transaction"
+
+  val pendingFlowIsNotSupportedMessage = "Pending transactions are not supported"
+  val internalServerErrorMessage = "500 Internal Server Error"
 
   def randomStringWithLength(length: Int): String = Random.alphanumeric.take(length).mkString
 
@@ -53,6 +56,7 @@ trait DLocalTestSupport extends LibPayTestSupport {
 
   def beSucceedTryWith(value: String): Matcher[Try[String]] = beSuccessfulTry.withValue(value)
 
+  def beFailedTransactionWith(errorCode: String, errorDescription:String): Matcher[Try[String]] = failWith(s"Transaction failed($errorCode): $errorDescription")
 
   def failWith(message: String): Matcher[Try[String]] = beFailedTry.like { case e: PaymentErrorException => e.message must contain(message) }
 

@@ -15,6 +15,7 @@ class DLocalGateway(settings: DLocalGatewaySettings) extends PaymentGateway {
   private val saleUrl = s"${settings.url}/api_curl/cc/sale"
   private val authorizationUrl = s"${settings.url}/api_curl/cc/auth"
   private val captureUrl = s"${settings.url}/api_curl/cc/capture"
+  private val voidAuthorizationUrl = s"${settings.url}/api_curl/cc/cancel"
 
   override def sale(merchantKey: String, creditCard: CreditCard, payment: Payment, customer: Option[Customer], deal: Option[Deal]): Try[String] = {
     val merchant = JsonDLocalMerchantParser.parse(merchantKey)
@@ -49,6 +50,16 @@ class DLocalGateway(settings: DLocalGatewaySettings) extends PaymentGateway {
     )
   }
 
+  override def voidAuthorization(merchantKey: String, authorizationKey: String): Try[String] = {
+    val authorization = JsonDLocalAuthorizationParser.parse(authorizationKey)
+    val voidAuthorizationRequest = DLocalVoidAuthorizationRequest(settings, authorization)
+
+    execute(
+      url = voidAuthorizationUrl,
+      request = voidAuthorizationRequest,
+      responseHandler = DLocalVoidAuthorizationResponseHandler
+    )
+  }
 
   def execute(url: String, request: DLocalRequest, responseHandler: DLocalResponseHandler): Try[String] = {
     Try {
@@ -64,6 +75,4 @@ class DLocalGateway(settings: DLocalGatewaySettings) extends PaymentGateway {
     }
   }
 
-
-  override def voidAuthorization(merchantKey: String, authorizationKey: String): Try[String] = ???
 }

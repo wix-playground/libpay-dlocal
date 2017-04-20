@@ -16,6 +16,7 @@ package object dlocal {
   private val SuccessResponseStatus = "OK"
   private val NotPresent = "NA"
 
+  private val CanceledTransactionStatus = "1"
   private val PendingTransactionStatus = "7"
   private val RejectedTransactionStatus = "8"
   private val ApprovedTransactionStatus = "9"
@@ -122,13 +123,27 @@ package object dlocal {
       "x_auth_id" -> authorization.authId
     )
     val optionalFields: Map[String, Option[String]] = Map(
-      "x_amount" ->Some(amount).map(_.toString)
+      "x_amount" -> Some(amount).map(_.toString)
     )
     val controlSumFields: Seq[String] = Seq(
       "x_invoice",
       "x_auth_id",
       "x_amount",
       "x_currency"
+    )
+  }
+
+  private[dlocal] case class DLocalVoidAuthorizationRequest(settings: DLocalGatewaySettings,
+                                                            authorization: DLocalAuthorization) extends DLocalBaseRequest {
+    val mandatoryFields: Map[String, String] = Map(
+      "x_invoice" -> authorization.invoiceId,
+      "x_auth_id" -> authorization.authId
+    )
+    val optionalFields: Map[String, Option[String]] = Map.empty
+
+    val controlSumFields: Seq[String] = Seq(
+      "x_invoice",
+      "x_auth_id"
     )
   }
 
@@ -209,6 +224,20 @@ package object dlocal {
 
     def extractResult(responseContent: JValue): String = {
       extractOrFail(responseContent)("x_document")
+    }
+  }
+
+  private[dlocal] object DLocalVoidAuthorizationResponseHandler extends DLocalBaseResponseHandler {
+    def assertResponseIsOk(responseContent: JValue): Unit = {
+      if (!(responseContent \ "result").extractOpt[String].contains(CanceledTransactionStatus)) {
+        val result = (responseContent \ "result").extractOpt[String].getOrElse(NotPresent)
+        val description = (responseContent \ "desc").extractOpt[String].getOrElse(NotPresent)
+        throw PaymentErrorException(s"Transaction is not canceled($result): $description")
+      }
+    }
+
+    def extractResult(responseContent: JValue): String = {
+      extractOrFail(responseContent)("x_auth_id")
     }
   }
 

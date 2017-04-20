@@ -113,6 +113,25 @@ package object dlocal {
     )
   }
 
+  private[dlocal] case class DLocalCaptureRequest(settings: DLocalGatewaySettings,
+                                                  authorization: DLocalAuthorization,
+                                                  amount: Double) extends DLocalBaseRequest {
+    val mandatoryFields: Map[String, String] = Map(
+      "x_invoice" -> authorization.invoiceId,
+      "x_currency" -> authorization.currency,
+      "x_auth_id" -> authorization.authId
+    )
+    val optionalFields: Map[String, Option[String]] = Map(
+      "x_amount" ->Some(amount).map(_.toString)
+    )
+    val controlSumFields: Seq[String] = Seq(
+      "x_invoice",
+      "x_auth_id",
+      "x_amount",
+      "x_currency"
+    )
+  }
+
   private[dlocal] trait DLocalBaseResponseHandler extends DLocalResponseHandler {
 
     def assertResponseIsOk(responseContent: JValue): Unit
@@ -179,6 +198,19 @@ package object dlocal {
     }
   }
 
+  private[dlocal] object DLocalCaptureResponseHandler extends DLocalBaseResponseHandler {
+    def assertResponseIsOk(responseContent: JValue): Unit = {
+      if (!(responseContent \ "result").extractOpt[String].contains(ApprovedTransactionStatus)) {
+        val result = (responseContent \ "result").extractOpt[String].getOrElse(NotPresent)
+        val description = (responseContent \ "desc").extractOpt[String].getOrElse(NotPresent)
+        throw PaymentErrorException(s"Transaction is not approved($result): $description")
+      }
+    }
+
+    def extractResult(responseContent: JValue): String = {
+      extractOrFail(responseContent)("x_document")
+    }
+  }
 
   private def unbox[T](request: Map[String, Option[T]]): Map[String, T] = request.filter(_._2.isDefined).mapValues(_.get)
 

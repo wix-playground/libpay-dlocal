@@ -21,45 +21,52 @@ class DLocalDriver(port: Int) {
 
   def anAuthorizeRequest() = new AuthorizeRequest
 
+  def aCaptureRequest() = new CaptureRequest
 
-  class SaleRequest {
-    def returns(documentId: String): Unit = returns(transactionStatusCode = "9", description = "approved", documentId = documentId)
-
-    def returns(transactionStatusCode: String, description: String, documentId: String = "93148038"): Unit =
-      respondWith(saleOkResponse(transactionStatusCode, description, documentId))
-
-    def isRejectedWith(description: String): Unit = returns(transactionStatusCode = "8", description = description)
-
-    def isPending: Unit = returns(transactionStatusCode = "7", description = "in_process")
-
+  abstract class BaseRequest {
     def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
 
     def failsWith(statusCode: StatusCode): Unit = respondWith(Map.empty, statusCode)
+
+    def isRejectedWith(description: String): Unit = returns(resultStatus = "8", resultDescription = description)
+
+    def isPending: Unit = returns(resultStatus = "7", resultDescription = "in_process")
+
+    def returns(resultStatus: String, resultDescription: String)
   }
 
-  class AuthorizeRequest {
+  class SaleRequest extends BaseRequest {
+    def returns(documentId: String): Unit =
+      respondWith(saleOkResponse(resultStatus = "9", resultDescription = "approved", documentId = documentId))
+
+    def returns(resultStatus: String, resultDescription: String): Unit =
+      respondWith(saleOkResponse(resultStatus = resultStatus, resultDescription = resultDescription))
+  }
+
+  class AuthorizeRequest extends BaseRequest{
     def returns(authId: String, invoiceId: String, currency: String): Unit =
-      respondWith(authOkResponse(result = "11", resultDescription = "TODO", authId, invoiceId, currency))
+      respondWith(authOkResponse(resultStatus = "11", resultDescription = "TODO", authId, invoiceId, currency))
 
-    def returns(transactionStatusCode: String, description: String): Unit =
-      respondWith(authOkResponse(transactionStatusCode, description))
-
-    def isRejectedWith(description: String): Unit = returns(transactionStatusCode = "8", description = description)
-
-    def isPending: Unit = returns(transactionStatusCode = "7", description = "in_process")
-
-    def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
-
-    def failsWith(statusCode: StatusCode): Unit = respondWith(Map.empty, statusCode)
+    def returns(resultStatus: String, resultDescription: String): Unit =
+      respondWith(authOkResponse(resultStatus = resultStatus, resultDescription = resultDescription))
   }
 
-  private def saleOkResponse(result: String,
+  class CaptureRequest extends BaseRequest {
+    def returns(documentId: String): Unit =
+      respondWith(saleOkResponse(resultStatus = "9", resultDescription = "approved", documentId = documentId))
+
+    def returns(resultStatus: String, resultDescription: String): Unit =
+      respondWith(saleOkResponse(resultStatus = resultStatus, resultDescription = resultDescription))
+  }
+
+
+  private def saleOkResponse(resultStatus: String,
                              resultDescription: String,
                              documentId: String = "93148038") = Map(
     "status" -> "OK",
     "desc" -> resultDescription,
     "control" -> "39BD42F98E7E8D7D451C851A1D06B030D010AF93A721BDCBFCD7F4E7852E9955",
-    "result" -> result,
+    "result" -> resultStatus,
     "x_invoice" -> "Invoice1234",
     "x_iduser" -> "",
     "x_description" -> "new shoes",
@@ -71,7 +78,7 @@ class DLocalDriver(port: Int) {
     "cc_descriptor" -> "Wix"
   )
 
-  private def authOkResponse(result: String,
+  private def authOkResponse(resultStatus: String,
                              resultDescription: String,
                              authId: String = "some auth id",
                              invoiceId: String = "some invoice id ",
@@ -79,7 +86,7 @@ class DLocalDriver(port: Int) {
     "status" -> "OK",
     "desc" -> resultDescription,
     "control" -> "39BD42F98E7E8D7D451C851A1D06B030D010AF93A721BDCBFCD7F4E7852E9955",
-    "result" -> result,
+    "result" -> resultStatus,
     "x_invoice" -> invoiceId,
     "x_auth_id" -> authId,
     "x_amount" -> "10.01",

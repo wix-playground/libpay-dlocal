@@ -5,6 +5,7 @@ import org.specs2.specification.Scope
 import spray.http._
 
 class DLocalGatewayIT extends SpecWithJUnit {
+  sequential
 
   val probePort = 10001
   val driver = new DLocalDriver(probePort)
@@ -12,8 +13,6 @@ class DLocalGatewayIT extends SpecWithJUnit {
   step {
     driver.start()
   }
-
-  sequential
 
   "sale" should {
     "send right http request" in new ctx {
@@ -40,7 +39,6 @@ class DLocalGatewayIT extends SpecWithJUnit {
       sale() must beFailedTransactionWith(someErrorCode, someErrorDescription)
     }
 
-
     "fail if transaction rejected" in new ctx {
       givenSaleRequest isRejectedWith someRejectionDescription
 
@@ -56,12 +54,11 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "fail if transaction is not approved" in new ctx {
       givenSaleRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
-      sale() must failWith(s"Transaction is not approved($someTransactionStatusCode): $someDescription")
+      sale() must failWith(s"Transaction is not Approved(9), but ($someTransactionStatusCode): $someDescription")
     }
 
     "handle http error" in new ctx {
       givenSaleRequest failsWith StatusCodes.InternalServerError
-
 
       sale() must failWith(internalServerErrorMessage)
     }
@@ -108,7 +105,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "fail if transaction is not authorized" in new ctx {
       givenAuthorizeRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
-      authorize() must failWith(s"Transaction is not authorized($someTransactionStatusCode): $someDescription")
+      authorize() must failWith(s"Transaction is not Authorized(11), but ($someTransactionStatusCode): $someDescription")
     }
 
     "handle http error" in new ctx {
@@ -157,7 +154,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "fail if transaction is not approved" in new ctx {
       givenCaptureRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
-      capture() must failWith(s"Transaction is not approved($someTransactionStatusCode): $someDescription")
+      capture() must failWith(s"Transaction is not Approved(9), but ($someTransactionStatusCode): $someDescription")
     }
 
     "handle http error" in new ctx {
@@ -204,7 +201,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "fail if transaction is not canceled" in new ctx {
       givenVoidAuthorizationRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
-      voidAuthorization() must failWith(s"Transaction is not canceled($someTransactionStatusCode): $someDescription")
+      voidAuthorization() must failWith(s"Transaction is not Canceled(1), but ($someTransactionStatusCode): $someDescription")
     }
 
     "handle http error" in new ctx {
@@ -245,7 +242,6 @@ class DLocalGatewayIT extends SpecWithJUnit {
 
     val setting = DLocalGatewaySettings(url = dbLocalUrl, login = "some login", transKey = "some key", secretKey = "secret key")
     val gateway = new DLocalGateway(setting)
-
 
     def givenSaleRequest = driver.aSaleRequest()
     def givenAuthorizeRequest = driver.anAuthorizeRequest()

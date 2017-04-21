@@ -10,42 +10,37 @@ class DLocalDriver(port: Int) {
 
   private val probe = new EmbeddedHttpProbe(port, EmbeddedHttpProbe.NotFoundHandler)
 
-  private implicit val formats = DefaultFormats
-
   def reset(): Unit = probe.reset()
-
   def start(): Unit = probe.doStart()
-
   def stop(): Unit = probe.doStop()
 
   def aSaleRequest() = new SaleRequest
-
   def anAuthorizeRequest() = new AuthorizeRequest
-
   def aCaptureRequest() = new CaptureRequest
-
   def aVoidAuthorizationRequest() = new VoidAuthorizationRequest
 
   abstract class BaseRequest {
 
-    protected def respondWith(content: Map[String, Any], status: StatusCode = StatusCodes.OK): Unit = {
-      probe.handlers prepend {
-        case HttpRequest(_, uri, _, _, _) if uri.path == Path(path) =>
-          HttpResponse(status = status, entity = Serialization.write(content))
-      }
-    }
+    val path: String
 
-    def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
+    def returnsWithNotExpected(resultStatus: String, resultDescription: String)
 
     def failsWith(httpStatusCode: StatusCode): Unit = respondWith(Map.empty, httpStatusCode)
+
+    def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
 
     def isRejectedWith(description: String): Unit = returnsWithNotExpected(resultStatus = "8", resultDescription = description)
 
     def isPendingWith(description: String): Unit = returnsWithNotExpected(resultStatus = "7", resultDescription = description)
 
-    def returnsWithNotExpected(resultStatus: String, resultDescription: String)
+    protected def respondWith(content: Map[String, Any], status: StatusCode = StatusCodes.OK): Unit = {
+      implicit val formats = DefaultFormats
 
-    val path: String
+      probe.handlers prepend {
+        case HttpRequest(_, uri, _, _, _) if uri.path == Path(path) =>
+          HttpResponse(status = status, entity = Serialization.write(content))
+      }
+    }
   }
 
   class SaleRequest extends BaseRequest {

@@ -1,8 +1,8 @@
 package com.wix.pay.dlocal
 
 import com.google.api.client.http.UrlEncodedParser
-import com.wix.pay.{PaymentErrorException, PaymentRejectedException}
 import com.wix.pay.testkit.LibPayTestSupport
+import com.wix.pay.{PaymentErrorException, PaymentRejectedException}
 import org.specs2.matcher.Matcher
 import org.specs2.matcher.MustThrownMatchers._
 import spray.http._
@@ -11,12 +11,11 @@ import scala.util.{Random, Try}
 
 trait DLocalTestSupport extends LibPayTestSupport {
 
-
   val merchant = DLocalMerchant("some merchant id", "some sub code")
-  val merchantAsString = JsonDLocalMerchantParser.stringify(merchant)
+  val merchantAsString = DLocalMerchant.stringify(merchant)
 
   val authorization = DLocalAuthorization(authId = "some authorization id", invoiceId = "some invoice id", currency = "BRL")
-  val authorizationAsString = JsonDLocalAuthorizationParser.stringify(authorization)
+  val authorizationAsString = DLocalAuthorization.stringify(authorization)
 
   val documentId = randomStringWithLength(26)
 
@@ -53,14 +52,10 @@ trait DLocalTestSupport extends LibPayTestSupport {
     containAllOf(expectedContent) ^^ { r: HttpRequest => actualBody(r) }
   }
 
-
+  def notFail = not(throwA[Exception])
   def beSucceedTryWith(value: String): Matcher[Try[String]] = beSuccessfulTry.withValue(value)
-
-  def beFailedTransactionWith(errorCode: String, errorDescription:String): Matcher[Try[String]] = failWith(s"Transaction failed($errorCode): $errorDescription")
-
   def failWith(message: String): Matcher[Try[String]] = beFailedTry.like { case e: PaymentErrorException => e.message must contain(message) }
-
   def beRejectedWith(description: String): Matcher[Try[String]] = beFailedTry.like { case e: PaymentRejectedException => e.message must contain(description) }
-
-
+  def failWithMissingField(fieldName: String) = throwA[IllegalArgumentException](s"'$fieldName' must be given")
+  def beFailedTransactionWith(errorCode: String, errorDescription: String): Matcher[Try[String]] = failWith(s"Transaction failed($errorCode): $errorDescription")
 }

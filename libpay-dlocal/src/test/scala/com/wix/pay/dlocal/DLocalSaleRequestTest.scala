@@ -8,16 +8,16 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
 
   "dLocal sale request validation" should {
 
-    "fail if invoice id is missing" in new ctx {
-      requestWithNoInvoiceId must failWithMissingField("Invoice Id")
+    "replace invoice id to NA if missing" in new ctx {
+      requestWithNoInvoiceId.fields must havePair("x_invoice" -> "NA")
     }
 
-    "fail if description is missing" in new ctx {
-      requestWithNoDealDescription must failWithMissingField("Deal Description")
+    "replace description to NA if missing" in new ctx {
+      requestWithNoDealDescription.fields must havePair("x_description" -> "NA")
     }
 
-    "fail if email is missing" in new ctx {
-      requestWithNoCustomerEmail must failWithMissingField("Customer Email")
+    "replace email to NA email if missing" in new ctx {
+      requestWithNoCustomerEmail.fields must havePair("x_email" -> "example@example.org")
     }
 
     "not fail if optional phone is missing" in new ctx {
@@ -26,6 +26,18 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
 
     "fail if billing country is missing" in new ctx {
       requestWithNoBillingCountry must failWithMissingField("Billing Country")
+    }
+
+    "fail if card holder id is missing" in new ctx {
+      requestWithNoCardHolderId must failWithMissingField("Card Holder Id")
+    }
+
+    "fail if card holder name is missing" in new ctx {
+      requestWithNoCardHolderName must failWithMissingField("Card Holder Name")
+    }
+
+    "fail if card CSC is missing" in new ctx {
+      requestWithNoCsc must failWithMissingField("Card CSC")
     }
   }
 
@@ -126,10 +138,13 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
 
     val someRequest = DLocalSaleRequest(merchant, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
 
-    def requestWithNoInvoiceId = someRequest.copy(deal = Some(someDeal.copy(invoiceId = None)))
-    def requestWithNoDealDescription = someRequest.copy(deal = Some(someDeal.copy(description = None)))
-    def requestWithNoCustomerEmail = someRequest.copy(customer = Some(someCustomer.copy(email = None)))
-    def requestWithNoCustomerPhone = someRequest.copy(customer = Some(someCustomer.copy(phone = None)))
-    def requestWithNoBillingCountry = someRequest.copy(creditCard = someCreditCard.copy(additionalFields = None))
+    def requestWithNoInvoiceId = someRequest.copy(deal = Some(someDeal.withInvoiceId(None)))
+    def requestWithNoDealDescription = someRequest.copy(deal = Some(someDeal.withDescription(None)))
+    def requestWithNoCustomerEmail = someRequest.copy(customer = Some(someCustomer.withEmail(None)))
+    def requestWithNoCustomerPhone = someRequest.copy(customer = Some(someCustomer.withPhone(None)))
+    def requestWithNoBillingCountry = someRequest.copy(creditCard = someCreditCard.withBillingAddress(_.withCountryCode(None)))
+    def requestWithNoCardHolderId = someRequest.copy(creditCard = someCreditCard.withHolderId(None))
+    def requestWithNoCardHolderName = someRequest.copy(creditCard = someCreditCard.withHolderName(None))
+    def requestWithNoCsc = someRequest.copy(creditCard = someCreditCard.withCsc(None))
   }
 }

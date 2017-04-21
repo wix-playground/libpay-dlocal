@@ -7,6 +7,7 @@ package object dlocal {
 
   private val SuccessResponseStatus = "OK"
   private val NotPresent = "NA"
+  private val NotPresentEmail = "example@example.org"
 
   private[dlocal] sealed abstract class TransactionStatus(val dLocalCode: String)
 
@@ -44,14 +45,14 @@ package object dlocal {
     val mandatoryFields = Map(
       "x_merchant_id" -> merchant.merchantId,
       "x_sub_code" -> merchant.subCode,
-      "x_invoice" -> deal.flatMap(_.invoiceId) || failWithMissingField("Invoice Id"),
+      "x_invoice" -> deal.flatMap(_.invoiceId) || NotPresent,
       "x_amount" -> payment.currencyAmount.amount.toString,
       "x_currency" -> payment.currencyAmount.currency,
-      "x_description" -> deal.flatMap(_.description) || failWithMissingField("Deal Description"),
+      "x_description" -> deal.flatMap(_.description) || NotPresent,
       "x_country" -> billingAddress.flatMap(_.countryCode).map(_.getCountry) || failWithMissingField("Billing Country"),
       "x_cpf" -> cardPublicFields.flatMap(_.holderId) || failWithMissingField("Card Holder Id"),
       "x_name" -> creditCard.holderName || failWithMissingField("Card Holder Name"),
-      "x_email" -> customer.flatMap(_.email) || failWithMissingField("Customer Email"),
+      "x_email" -> customer.flatMap(_.email) || NotPresentEmail,
       "cc_number" -> creditCard.number,
       "cc_exp_month" -> creditCard.expiration.month.toString,
       "cc_exp_year" -> creditCard.expiration.year.toString,
@@ -69,8 +70,7 @@ package object dlocal {
     )
   }
 
-  private[dlocal] case class DLocalCaptureRequest(authorization: DLocalAuthorization,
-                                                  amount: Double) extends DLocalBaseRequest {
+  private[dlocal] case class DLocalCaptureRequest(authorization: DLocalAuthorization, amount: Double) extends DLocalBaseRequest {
     val mandatoryFields: Map[String, String] = Map(
       "x_invoice" -> authorization.invoiceId,
       "x_currency" -> authorization.currency,

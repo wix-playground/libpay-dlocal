@@ -43,7 +43,6 @@ package object dlocal {
     val billingAddress = cardPublicFields.flatMap(_.billingAddressDetailed)
 
     val mandatoryFields = Map(
-      "x_merchant_id" -> merchant.merchantId,
       "x_sub_code" -> merchant.subCode,
       "x_invoice" -> deal.flatMap(_.invoiceId) || NotPresent,
       "x_amount" -> payment.currencyAmount.amount.toString,

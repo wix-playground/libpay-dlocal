@@ -25,10 +25,12 @@ object DLocalFakeClient extends App {
   val merchantSecretKey = "***"
 
   // unique merchant id, generated on our side, INTEGER, > 0, <= 999_999_999, should be unique by api doc, may be not unique by sandbox API
-  val subCode = s"${System.currentTimeMillis() % 100000}"
-  //  val subCode = 98621
+  // is used to register merchant
+    val subCode = s"${System.currentTimeMillis() % 100000}"
+//  val subCode = 98621
 
   // unique merchant email, should be unique by api doc, should not be unique by api doc, must be unique by sandbox API
+  // is used to register merchant
   val email = s"***+$subCode@gmail.com"
 
   val url = "https://sandbox.dlocal.com/api_curl/cc"
@@ -42,15 +44,16 @@ object DLocalFakeClient extends App {
   val creditCard = CreditCard("4312522698854138", YearMonth(2020, 9),
     Some(CreditCardOptionalFields.withFields(
       csc = Some("153"),
-      holderName = Some("REJE"))
+      holderName = Some("Some name"))
 
     ))
 
   turnOnHttpClientLogging()
 
   // unique merchant id, generated on dLocal side during registration
-  val subMerchantId = registerSubMerchant()
-  //    val subMerchantId = "K-K-6114e53f-5d74-4ee6-a1bb-44f8c06b0620"
+//    val subMerchantId = registerSubMerchant()
+//  val subMerchantId = "K-K-6114e53f-5d74-4ee6-a1bb-44f8c06b0620"
+//  val subMerchantId = "555"
   // ********************************** MERCHANT REGISTRATION **********************************
   // 200: {"sub_merchant_id":"K-087abead-a51f-47db-9bf6-c8050ca63426","x_sub_code":1}
   // 422: {"result":false,"message":"Error saving submerchant"} <- email is not unique
@@ -105,7 +108,7 @@ object DLocalFakeClient extends App {
       "x_login" -> merchantLogin,
       "x_trans_key" -> merchantPassword,
       "x_version" -> "4",
-      "x_invoice" -> "Invoice1234",
+      "x_invoice" -> "NA",
       "x_amount" -> "10.01",
       "x_currency" -> "BRL",
       //      "x_description" -> "new shoes", // sandbox does not require it
@@ -119,7 +122,7 @@ object DLocalFakeClient extends App {
       "cc_exp_year" -> creditCard.expiration.year,
       "cc_cvv" -> creditCard.csc.get,
 
-      "x_merchant_id" -> subMerchantId,
+      // "x_merchant_id" -> subMerchantId, // merchant id is not needed, dLocal correlate merchant by sub code
       "x_sub_code" -> subCode,
 
       "type" -> "json"
@@ -146,7 +149,7 @@ object DLocalFakeClient extends App {
       "cc_exp_year" -> creditCard.expiration.year,
       "cc_cvv" -> creditCard.csc.get,
 
-      "x_merchant_id" -> subMerchantId,
+      // "x_merchant_id" -> subMerchantId, // merchant id is not needed, dLocal correlate merchant by sub code
       "x_sub_code" -> subCode,
 
       "type" -> "json"

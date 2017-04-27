@@ -125,8 +125,8 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       someRequest.fields must havePair("x_phone" -> someCustomer.phone.get)
     }
 
-    "contain x_merchant_id" in new ctx {
-      someRequest.fields must havePair("x_merchant_id" -> merchant.merchantId)
+    "contain no merchant id" in new ctx {
+      someRequest.fields must not haveValue merchant.merchantId
     }
 
     "contain x_sub_code" in new ctx {

@@ -11,7 +11,7 @@ import scala.util.{Random, Try}
 
 trait DLocalTestSupport extends LibPayTestSupport {
 
-  val merchant = DLocalMerchant("some merchant id", "some sub code")
+  val merchant = DLocalMerchant("some merchant id", "some sub code", "some@email.com")
   val merchantAsString = DLocalMerchant.stringify(merchant)
 
   val authorization = DLocalAuthorization(authId = "some authorization id", invoiceId = "some invoice id", currency = "BRL")

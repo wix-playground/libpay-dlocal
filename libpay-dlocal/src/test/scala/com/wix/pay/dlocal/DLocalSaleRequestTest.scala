@@ -1,5 +1,7 @@
 package com.wix.pay.dlocal
 
+import java.util.Locale
+
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.SpecWithJUnit
 import org.specs2.specification.Scope
@@ -28,8 +30,8 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       requestWithNoBillingCountry must failWithMissingField("Billing Country")
     }
 
-    "fail if card holder id is missing" in new ctx {
-      requestWithNoCardHolderId must failWithMissingField("Card Holder Id")
+    "fail if the request is from mexico and card holder name is missing" in new ctx {
+      requestFromMexicoWithNoCardHolderName must failWithMissingField("Card Holder Name")
     }
 
     "fail if card holder name is missing" in new ctx {
@@ -64,12 +66,20 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       someRequest.fields must havePair("x_description" -> someDeal.description.get)
     }
 
-    "contain x_country" in new ctx {
-      someRequest.fields must havePair("x_country" -> someCreditCard.billingAddressDetailed.get.countryCode.get.getCountry)
+    "contain x_country for mexico" in new ctx {
+      requestFromMexico.fields must havePair("x_country" -> "MX")
     }
 
-    "contain x_cpf" in new ctx {
-      someRequest.fields must havePair("x_cpf" -> someCreditCard.additionalFields.get.publicFields.get.holderId.get)
+    "contain XX as x_country for other countries" in new ctx {
+      requestFromGermany.fields must havePair("x_country" -> "XX")
+    }
+
+    "contain x_cpf for mexico" in new ctx {
+      requestFromMexico.fields must havePair("x_cpf" -> someCreditCard.additionalFields.get.publicFields.get.holderId.get)
+    }
+
+    "not contain x_cpf for other countries" in new ctx {
+      requestFromGermany.fields must not haveKey("x_cpf")
     }
 
     "contain x_name" in new ctx {
@@ -143,8 +153,10 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
     def requestWithNoCustomerEmail = someRequest.copy(customer = Some(someCustomer.withEmail(None)))
     def requestWithNoCustomerPhone = someRequest.copy(customer = Some(someCustomer.withPhone(None)))
     def requestWithNoBillingCountry = someRequest.copy(creditCard = someCreditCard.withBillingAddress(_.withCountryCode(None)))
-    def requestWithNoCardHolderId = someRequest.copy(creditCard = someCreditCard.withHolderId(None))
     def requestWithNoCardHolderName = someRequest.copy(creditCard = someCreditCard.withHolderName(None))
     def requestWithNoCsc = someRequest.copy(creditCard = someCreditCard.withCsc(None))
+    def requestFromMexico = someRequest.copy(creditCard = someCreditCard.withBillingAddress(_.withCountryCode(new Locale("", "MX"))))
+    def requestFromMexicoWithNoCardHolderName = someRequest.copy(creditCard = requestFromMexico.creditCard.withHolderName(None))
+    def requestFromGermany = someRequest.copy(creditCard = someCreditCard.withBillingAddress(_.withCountryCode(Locale.GERMANY)))
   }
 }

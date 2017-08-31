@@ -9,7 +9,9 @@ package object dlocal {
   private val NotPresent = "NA"
   private val NotPresentEmail = "example@example.org"
 
-  private val MexicoCountryCode = "MX"
+  private val MexicoTwoLettersCountryCode = "MX"
+  private val MexicoThreeLettersCountryCode = "MEX"
+  private val MexicoCountryCodes = Seq(MexicoTwoLettersCountryCode, MexicoThreeLettersCountryCode)
   private val NonMexicoCountryCode = "XX"
 
 
@@ -74,12 +76,12 @@ package object dlocal {
 
     private def getXcountryField(billingAddress: Option[AddressDetailed]): String = {
       val countryCode = getCountryCode(billingAddress)
-      if (countryCode.toUpperCase == MexicoCountryCode) MexicoCountryCode else NonMexicoCountryCode
+      if (MexicoCountryCodes.contains(countryCode)) MexicoTwoLettersCountryCode else NonMexicoCountryCode
     }
 
     def getXcpfField(billingAddress: Option[AddressDetailed], cardPublicFields: Option[PublicCreditCardOptionalFields]): Map[String, String] = {
       val countryCode = getCountryCode(billingAddress)
-      if (countryCode == MexicoCountryCode) Map("x_cpf" -> getHolderId(cardPublicFields)) else Map.empty
+      if (MexicoCountryCodes.contains(countryCode)) Map("x_cpf" -> getHolderId(cardPublicFields)) else Map.empty
     }
 
     private def getHolderId(cardPublicFields: Option[PublicCreditCardOptionalFields]): String = {

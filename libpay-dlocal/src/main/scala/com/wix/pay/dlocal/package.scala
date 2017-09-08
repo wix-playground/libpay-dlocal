@@ -61,7 +61,7 @@ package object dlocal {
       "cc_exp_month" -> creditCard.expiration.month.toString,
       "cc_exp_year" -> creditCard.expiration.year.toString,
       "cc_cvv" -> creditCard.csc || failWithMissingField("Card CSC")
-    ) ++ getXcpfField(billingAddress, cardPublicFields)
+    ) ++ getXcpfField(cardPublicFields)
 
 
     val optionalFields = Map(
@@ -79,13 +79,8 @@ package object dlocal {
       if (MexicoCountryCodes.contains(countryCode)) MexicoTwoLettersCountryCode else NonMexicoCountryCode
     }
 
-    def getXcpfField(billingAddress: Option[AddressDetailed], cardPublicFields: Option[PublicCreditCardOptionalFields]): Map[String, String] = {
-      val countryCode = getCountryCode(billingAddress)
-      if (MexicoCountryCodes.contains(countryCode)) Map("x_cpf" -> getHolderId(cardPublicFields)) else Map.empty
-    }
-
-    private def getHolderId(cardPublicFields: Option[PublicCreditCardOptionalFields]): String = {
-      cardPublicFields.flatMap(_.holderId).getOrElse(failWithMissingField("Card Holder Id"))
+    def getXcpfField(cardPublicFields: Option[PublicCreditCardOptionalFields]): Map[String, String] = {
+      cardPublicFields.flatMap(_.holderId).map("x_cpf" -> _).toMap
     }
 
     private def getCountryCode(billingAddress: Option[AddressDetailed]): String = {

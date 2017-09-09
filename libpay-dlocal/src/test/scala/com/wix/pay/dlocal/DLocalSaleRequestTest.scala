@@ -26,10 +26,6 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       requestWithNoCustomerPhone must notFail
     }
 
-    "fail if billing country is missing" in new ctx {
-      requestWithNoBillingCountry must failWithMissingField("Billing Country")
-    }
-
     "fail if the request is from mexico and card holder name is missing" in new ctx {
       requestFromMexicoWithNoCardHolderName must failWithMissingField("Card Holder Name")
     }
@@ -66,7 +62,7 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       someRequest.fields must havePair("x_description" -> someDeal.description.get)
     }
 
-    "contain x_country for mexico" in new ctx {
+    "contain x_country for mexico (Dlocal presented country)" in new ctx {
       requestFromMexico.fields must havePair("x_country" -> "MX")
     }
 
@@ -74,12 +70,16 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       requestFromGermany.fields must havePair("x_country" -> "XX")
     }
 
-    "contain x_cpf if provided" in new ctx {
+    "contain x_cpf for Mexico (Dlocal presented country) if provided" in new ctx {
       requestFromMexico.fields must havePair("x_cpf" -> someCreditCard.additionalFields.get.publicFields.get.holderId.get)
     }
 
     "not contain x_cpf if not provided" in new ctx {
       requestWithNoHolderId.fields must not haveKey("x_cpf")
+    }
+
+    "not contain x_cpf for dlocal not presented countries even if provided" in new ctx {
+      requestFromGermany.fields must not haveKey("x_cpf")
     }
 
     "contain x_name" in new ctx {

@@ -240,7 +240,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
 
     driver.reset()
 
-    val setting = DLocalGatewaySettings(url = dbLocalUrl, login = "some login", transKey = "some key", secretKey = "secret key")
+    val setting = DLocalGatewaySettings(url = dbLocalUrl, sandboxUrl = dbLocalUrl, login = "some login", transKey = "some key", secretKey = "secret key")
     val gateway = new DLocalGateway(setting)
 
     def givenSaleRequest = driver.aSaleRequest()

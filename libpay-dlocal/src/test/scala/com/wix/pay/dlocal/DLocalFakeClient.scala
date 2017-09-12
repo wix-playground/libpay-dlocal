@@ -20,13 +20,14 @@ object DLocalFakeClient extends App {
   // login to API, reused for all merchant
   val merchantLogin = "***"
   // password to API, reused for all merchant
-  val merchantPassword = "***"
+  val merchantTransKey = "***"
   // hashing key to sign requests to API
   val merchantSecretKey = "***"
 
   // unique merchant id, generated on our side, INTEGER, > 0, <= 999_999_999, should be unique by api doc, may be not unique by sandbox API
   // is used to register merchant
-    val subCode = s"${System.currentTimeMillis() % 100000}"
+    //val subCode = s"${System.currentTimeMillis() % 100000}"
+  val subCode = 5
 //  val subCode = 98621
 
   // unique merchant email, should be unique by api doc, should not be unique by api doc, must be unique by sandbox API
@@ -41,12 +42,13 @@ object DLocalFakeClient extends App {
 
   val requestFactory: HttpRequestFactory = new NetHttpTransport().createRequestFactory()
 
-  val creditCard = CreditCard("4312522698854138", YearMonth(2020, 9),
+  val creditCard = CreditCard("4111111111111111", YearMonth(2020, 9),
     Some(CreditCardOptionalFields.withFields(
       csc = Some("153"),
-      holderName = Some("Some name"))
-
+      holderName = Some("MASTERCARD"),
+      holderId = Some("123123")
     ))
+  )
 
   turnOnHttpClientLogging()
 
@@ -90,31 +92,31 @@ object DLocalFakeClient extends App {
   // 200: {"status":"ERROR","desc":"Empty params x_invoice","error_code":"301"}
 
 
-  def registerSubMerchant(): String = {
-    val content = Map(
-      "x_login" -> merchantLogin,
-      "x_trans_key" -> merchantPassword,
-      "x_sub_code" -> subCode,
-      "x_email" -> email,
-      "x_name" -> "Taras Inc."
-    )
-
-    val response = postJson("https://sandbox.dlocal.com/api_curl/submerchants/sub", content)
-    (response \ "sub_merchant_id").extract[String]
-  }
+//  def registerSubMerchant(): String = {
+//    val content = Map(
+//      ………"x_login" -> merchantLogin,
+//      "x_trans_key" -> merchantTransKey,
+//      "x_sub_…code" -> subCode,
+//      "x_email" -> email,
+//      "x_name" -> "Taras Inc."
+//    )
+//
+//    val response = postJson("https://sandbox.dlocal.com/api_curl/submerchants/sub", content)
+//    (response \ "sub_merchant_id").extract[String]
+//  }
 
   def sale(creditCard: CreditCard): Unit = {
     val content = Map(
       "x_login" -> merchantLogin,
-      "x_trans_key" -> merchantPassword,
+      "x_trans_key" -> merchantTransKey,
       "x_version" -> "4",
       "x_invoice" -> "NA",
       "x_amount" -> "10.01",
-      "x_currency" -> "BRL",
+      "x_currency" -> "MXN",
       //      "x_description" -> "new shoes", // sandbox does not require it
       //      "x_device_id" -> "54hj4h5jh46hasjd", // sandbox does not require it
-      "x_country" -> "BR",
-      "x_cpf" -> "00003456789",
+      "x_country" -> "MX",
+      "x_cpf" -> creditCard.holderId.get,
       "x_name" -> creditCard.holderName.get,
       "x_email" -> "testing2@dlocal.com",
       "cc_number" -> creditCard.number,
@@ -133,7 +135,7 @@ object DLocalFakeClient extends App {
   def authorize(creditCard: CreditCard): DLocalAuthorization = {
     val content = Map(
       "x_login" -> merchantLogin,
-      "x_trans_key" -> merchantPassword,
+      "x_trans_key" -> merchantTransKey,
       "x_version" -> "4",
       "x_invoice" -> "Invoice1234",
       "x_amount" -> "10.01",
@@ -166,7 +168,7 @@ object DLocalFakeClient extends App {
   def capture(authorization: DLocalAuthorization): Unit = {
     val content = Map(
       "x_login" -> merchantLogin,
-      "x_trans_key" -> merchantPassword,
+      "x_trans_key" -> merchantTransKey,
       "x_version" -> "4",
       "x_invoice" -> authorization.invoiceId,
       //      "x_auth_id" -> authorization.authId,
@@ -180,7 +182,7 @@ object DLocalFakeClient extends App {
   def voidAuthorization(authorization: DLocalAuthorization): Unit = {
     val content = Map(
       "x_login" -> merchantLogin,
-      "x_trans_key" -> merchantPassword,
+      "x_trans_key" -> merchantTransKey,
       "x_version" -> "4",
       "x_invoice" -> authorization.invoiceId,
       "x_auth_id" -> authorization.authId,

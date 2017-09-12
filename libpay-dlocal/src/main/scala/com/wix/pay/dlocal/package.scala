@@ -9,11 +9,8 @@ package object dlocal {
   private val NotPresent = "NA"
   private val NotPresentEmail = "example@example.org"
 
-  private val MexicoTwoLettersCountryCode = "MX"
-  private val MexicoThreeLettersCountryCode = "MEX"
-  private val MexicoCountryCodes = Seq(MexicoTwoLettersCountryCode, MexicoThreeLettersCountryCode)
-  private val NonMexicoCountryCode = "XX"
-
+  private val DlocalPresentedCountries = Set("AR", "BR", "CL", "CO", "CN", "IN", "MX", "PE", "TN", "UY")
+  private val DlocalAnyOtherCountry = "XX"
 
   private[dlocal] sealed abstract class TransactionStatus(val dLocalCode: String)
 
@@ -47,6 +44,8 @@ package object dlocal {
 
     val cardPublicFields = creditCard.additionalFields.flatMap(_.publicFields)
     val billingAddress = cardPublicFields.flatMap(_.billingAddressDetailed)
+    val buyerCountry = billingAddress.flatMap(_.countryCode).map(_.getCountry.toUpperCase)
+    val dlocalCountry = buyerCountry.filter(DlocalPresentedCountries.contains) || DlocalAnyOtherCountry
 
     val mandatoryFields = Map(
       "x_sub_code" -> merchant.subCode,
@@ -54,14 +53,14 @@ package object dlocal {
       "x_amount" -> payment.currencyAmount.amount.toString,
       "x_currency" -> payment.currencyAmount.currency,
       "x_description" -> deal.flatMap(_.description) || NotPresent,
-      "x_country" -> getXcountryField(billingAddress),
+      "x_country" -> dlocalCountry,
       "x_name" -> creditCard.holderName || failWithMissingField("Card Holder Name"),
       "x_email" -> customer.flatMap(_.email) || NotPresentEmail,
       "cc_number" -> creditCard.number,
       "cc_exp_month" -> creditCard.expiration.month.toString,
       "cc_exp_year" -> creditCard.expiration.year.toString,
       "cc_cvv" -> creditCard.csc || failWithMissingField("Card CSC")
-    ) ++ getXcpfField(billingAddress, cardPublicFields)
+    )
 
 
     val optionalFields = Map(
@@ -71,26 +70,9 @@ package object dlocal {
       "x_zip" -> billingAddress.flatMap(_.postalCode),
       "x_city" -> billingAddress.flatMap(_.city),
       "x_state" -> billingAddress.flatMap(_.state),
-      "x_phone" -> customer.flatMap(_.phone)
+      "x_phone" -> customer.flatMap(_.phone),
+      "x_cpf" -> cardPublicFields.flatMap(_.holderId).filter(_ => dlocalCountry != DlocalAnyOtherCountry)
     )
-
-    private def getXcountryField(billingAddress: Option[AddressDetailed]): String = {
-      val countryCode = getCountryCode(billingAddress)
-      if (MexicoCountryCodes.contains(countryCode)) MexicoTwoLettersCountryCode else NonMexicoCountryCode
-    }
-
-    def getXcpfField(billingAddress: Option[AddressDetailed], cardPublicFields: Option[PublicCreditCardOptionalFields]): Map[String, String] = {
-      val countryCode = getCountryCode(billingAddress)
-      if (MexicoCountryCodes.contains(countryCode)) Map("x_cpf" -> getHolderId(cardPublicFields)) else Map.empty
-    }
-
-    private def getHolderId(cardPublicFields: Option[PublicCreditCardOptionalFields]): String = {
-      cardPublicFields.flatMap(_.holderId).getOrElse(failWithMissingField("Card Holder Id"))
-    }
-
-    private def getCountryCode(billingAddress: Option[AddressDetailed]): String = {
-      billingAddress.flatMap(_.countryCode).map(_.getCountry).getOrElse(failWithMissingField("Billing Country"))
-    }
   }
 
   private[dlocal] case class DLocalCaptureRequest(authorization: DLocalAuthorization, amount: Double) extends DLocalBaseRequest {

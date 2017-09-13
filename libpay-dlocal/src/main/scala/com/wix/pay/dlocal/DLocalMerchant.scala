@@ -3,7 +3,7 @@ package com.wix.pay.dlocal
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization
 
-case class DLocalMerchant(merchantId: String, subCode: String, email: String)
+case class DLocalMerchant(merchantId: String, subCode: String, email: String, sandboxMode: Boolean = false)
 
 object DLocalMerchant {
   private implicit val formats = DefaultFormats

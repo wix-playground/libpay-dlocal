@@ -7,7 +7,7 @@ import com.wix.pay.model.{Customer, Deal, Payment}
 import scala.util.Try
 
 class DLocalGatewayWithLiveAndSandbox(live: DLocalGateway, sandbox: DLocalGateway) extends PaymentGateway {
-  def this(settings: DLocalSettings) = this(new DLocalGateway(settings.live), new DLocalGateway(settings.live))
+  def this(settings: DLocalSettings) = this(new DLocalGateway(settings.live), new DLocalGateway(settings.sandbox))
 
   override def sale(merchantKey: String, creditCard: CreditCard, payment: Payment, customer: Option[Customer], deal: Option[Deal]): Try[String] =
     withEnvironment(merchantKey) { gateway =>

@@ -6,9 +6,8 @@ import org.json4s.native.Serialization
 import spray.http.Uri.Path
 import spray.http._
 
-class DLocalDriver(port: Int) {
-
-  private val probe = new EmbeddedHttpProbe(port, EmbeddedHttpProbe.NotFoundHandler)
+class DLocalDriver(probe: EmbeddedHttpProbe) {
+  def this(port: Int) = this(new EmbeddedHttpProbe(port, EmbeddedHttpProbe.NotFoundHandler))
 
   def reset(): Unit = probe.reset()
   def start(): Unit = probe.doStart()

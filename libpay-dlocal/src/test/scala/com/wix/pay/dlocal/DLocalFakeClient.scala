@@ -18,16 +18,16 @@ object DLocalFakeClient extends App {
   implicit val formats = DefaultFormats
 
   // login to API, reused for all merchant
-  val merchantLogin = "***"
+  val merchantLogin = "NrLlHoRaE9"
   // password to API, reused for all merchant
-  val merchantTransKey = "***"
+  val merchantTransKey = "YLVrVhCjXP"
   // hashing key to sign requests to API
-  val merchantSecretKey = "***"
+  val merchantSecretKey = "SemslWbStkPTCHzVK8oR8M3LskggJtWda"
 
   // unique merchant id, generated on our side, INTEGER, > 0, <= 999_999_999, should be unique by api doc, may be not unique by sandbox API
   // is used to register merchant
     //val subCode = s"${System.currentTimeMillis() % 100000}"
-  val subCode = 5
+  val subCode = 1106871
 //  val subCode = 98621
 
   // unique merchant email, should be unique by api doc, should not be unique by api doc, must be unique by sandbox API

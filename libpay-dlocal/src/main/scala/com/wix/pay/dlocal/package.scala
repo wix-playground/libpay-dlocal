@@ -12,6 +12,8 @@ package object dlocal {
   private val DlocalPresentedCountries = Set("AR", "BR", "CL", "CO", "CN", "IN", "MX", "PE", "TN", "UY")
   private val DlocalAnyOtherCountry = "XX"
 
+  private[dlocal] val DlocalXCPF = "x_cpf"
+
   private[dlocal] sealed abstract class TransactionStatus(val dLocalCode: String)
 
   private[dlocal] case object Canceled extends TransactionStatus(dLocalCode = "1")
@@ -117,7 +119,11 @@ package object dlocal {
       if (!responseFields("status").contains(SuccessResponseStatus)) {
         val errorCode = responseFields("error_code") || NotPresent
         val description = responseFields("desc") || NotPresent
-        throw PaymentErrorException(s"Transaction failed($errorCode): $description")
+        if (description contains DlocalXCPF) {
+          throw PaymentRejectedException(s"Transaction failed($errorCode): $description")
+        } else {
+          throw PaymentErrorException(s"Transaction failed($errorCode): $description")
+        }
       }
 
       if (responseFields("result").contains(Rejected.dLocalCode)) {

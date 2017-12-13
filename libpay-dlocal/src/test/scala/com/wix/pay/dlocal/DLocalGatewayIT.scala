@@ -1,18 +1,62 @@
 package com.wix.pay.dlocal
 
+
+import akka.http.scaladsl.model.{HttpMethods, HttpRequest, StatusCodes}
 import org.specs2.mutable.SpecWithJUnit
 import org.specs2.specification.Scope
-import spray.http._
+import com.wix.pay.dlocal.DLocalTestSupport._
+
+import scala.util.Try
+
 
 class DLocalGatewayIT extends SpecWithJUnit {
   sequential
 
-  val probePort = 10001
-  val driver = new DLocalDriver(probePort)
+  val port = 10001
+  val driver = new DLocalDriver(port)
+
+  val dbLocalUrl = s"http://localhost:$port"
+  val saleUrl = s"$dbLocalUrl/api_curl/cc/sale"
+  val authorizeUrl = s"$dbLocalUrl/api_curl/cc/auth"
+  val captureUrl = s"$dbLocalUrl/api_curl/cc/capture"
+  val voidAuthorizationUrl = s"$dbLocalUrl/api_curl/cc/cancel"
+  val setting = DLocalGatewaySettings(
+    url = dbLocalUrl,
+    apiUrl = dbLocalUrl,
+    login = "some login",
+    transKey = "some key",
+    secretKey = "secret key")
+  val gateway = new DLocalGateway(setting)
+
+  def givenSaleRequest: driver.SaleRequest = driver.aSaleRequest()
+  def givenAuthorizeRequest: driver.AuthorizeRequest = driver.anAuthorizeRequest()
+  def givenCaptureRequest: driver.CaptureRequest = driver.aCaptureRequest()
+  def givenVoidAuthorizationRequest: driver.VoidAuthorizationRequest = driver.aVoidAuthorizationRequest()
+
+  def sale(): Try[String] = {
+    gateway.sale(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
+  }
+  def authorize(): Try[String] = {
+    gateway.authorize(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
+  }
+  def capture(authorization: String = authorizationAsString): Try[String] = {
+    gateway.capture(merchantAsString, authorization, somePayment.amount)
+  }
+  def voidAuthorization(authorization: String = authorizationAsString): Try[String] = {
+    gateway.voidAuthorization(merchantAsString, authorization)
+  }
+
+  def lastRequest: HttpRequest = {
+    val request = driver.lastRequest
+    request must not(beNull)
+    request
+  }
+
 
   step {
     driver.start()
   }
+
 
   "sale" should {
     "send right http request" in new ctx {
@@ -40,13 +84,13 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
 
     "fail if transaction rejected" in new ctx {
-      givenSaleRequest isRejectedWith someRejectionDescription
+      givenSaleRequest getsRejectedWith someRejectionDescription
 
       sale() must beRejectedWith(someRejectionDescription)
     }
 
     "fail if transaction pending" in new ctx {
-      givenSaleRequest isPendingWith somePendingDescription
+      givenSaleRequest getsPendingWith somePendingDescription
 
       sale() must failWith(pendingFlowIsNotSupportedMessage)
     }
@@ -63,6 +107,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
       sale() must failWith(internalServerErrorMessage)
     }
   }
+
 
   "authorize" should {
     "send right http request" in new ctx {
@@ -91,13 +136,13 @@ class DLocalGatewayIT extends SpecWithJUnit {
 
 
     "fail if transaction rejected" in new ctx {
-      givenAuthorizeRequest isRejectedWith someRejectionDescription
+      givenAuthorizeRequest getsRejectedWith someRejectionDescription
 
       authorize() must beRejectedWith(someRejectionDescription)
     }
 
     "fail if transaction pending" in new ctx {
-      givenAuthorizeRequest isPendingWith somePendingDescription
+      givenAuthorizeRequest getsPendingWith somePendingDescription
 
       authorize() must failWith(pendingFlowIsNotSupportedMessage)
     }
@@ -105,7 +150,8 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "fail if transaction is not authorized" in new ctx {
       givenAuthorizeRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
-      authorize() must failWith(s"Transaction is not Authorized(11), but ($someTransactionStatusCode): $someDescription")
+      authorize() must failWith(
+        s"Transaction is not Authorized(11), but ($someTransactionStatusCode): $someDescription")
     }
 
     "handle http error" in new ctx {
@@ -114,6 +160,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
       authorize() must failWith(internalServerErrorMessage)
     }
   }
+
 
   "capture" should {
     "send right http request" in new ctx {
@@ -129,8 +176,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
         "x_amount" -> somePayment.amount.toString,
         "x_currency" -> authorization.currency,
         "x_auth_id" -> authorization.authId,
-        "type" -> "json"
-      ))
+        "type" -> "json"))
     }
 
     "return x_document if transaction approved" in new ctx {
@@ -146,7 +192,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
 
     "fail if transaction rejected" in new ctx {
-      givenCaptureRequest isRejectedWith someRejectionDescription
+      givenCaptureRequest getsRejectedWith someRejectionDescription
 
       capture() must beRejectedWith(someRejectionDescription)
     }
@@ -164,6 +210,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
   }
 
+
   "void authorization" should {
     "send right http request" in new ctx {
       voidAuthorization()
@@ -176,8 +223,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
         "x_version" -> "4",
         "x_invoice" -> authorization.invoiceId,
         "x_auth_id" -> authorization.authId,
-        "type" -> "json"
-      ))
+        "type" -> "json"))
     }
 
     "return x_auth_id if transaction canceled" in new ctx {
@@ -193,7 +239,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
 
     "fail if transaction rejected" in new ctx {
-      givenVoidAuthorizationRequest isRejectedWith someRejectionDescription
+      givenVoidAuthorizationRequest getsRejectedWith someRejectionDescription
 
       voidAuthorization() must beRejectedWith(someRejectionDescription)
     }
@@ -201,7 +247,8 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "fail if transaction is not canceled" in new ctx {
       givenVoidAuthorizationRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
-      voidAuthorization() must failWith(s"Transaction is not Canceled(1), but ($someTransactionStatusCode): $someDescription")
+      voidAuthorization() must failWith(
+        s"Transaction is not Canceled(1), but ($someTransactionStatusCode): $someDescription")
     }
 
     "handle http error" in new ctx {
@@ -210,6 +257,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
       voidAuthorization() must failWith(internalServerErrorMessage)
     }
   }
+
 
   "authorize/capture" should {
     "work" in new ctx {
@@ -221,6 +269,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
   }
 
+
   "authorize/void" should {
     "work" in new ctx {
       givenAuthorizeRequest returns(authorization.authId, authorization.invoiceId, authorization.currency)
@@ -231,33 +280,8 @@ class DLocalGatewayIT extends SpecWithJUnit {
     }
   }
 
-  trait ctx extends Scope with DLocalTestSupport {
-    val dbLocalUrl = s"http://localhost:$probePort"
-    val saleUrl = s"$dbLocalUrl/api_curl/cc/sale"
-    val authorizeUrl = s"$dbLocalUrl/api_curl/cc/auth"
-    val captureUrl = s"$dbLocalUrl/api_curl/cc/capture"
-    val voidAuthorizationUrl = s"$dbLocalUrl/api_curl/cc/cancel"
 
+  trait ctx extends Scope {
     driver.reset()
-
-    val setting = DLocalGatewaySettings(url = dbLocalUrl, apiUrl = dbLocalUrl, login = "some login", transKey = "some key", secretKey = "secret key")
-    val gateway = new DLocalGateway(setting)
-
-    def givenSaleRequest = driver.aSaleRequest()
-    def givenAuthorizeRequest = driver.anAuthorizeRequest()
-    def givenCaptureRequest = driver.aCaptureRequest()
-    def givenVoidAuthorizationRequest = driver.aVoidAuthorizationRequest()
-
-    def sale() = gateway.sale(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
-    def authorize() = gateway.authorize(merchantAsString, someCreditCard, somePayment, Some(someCustomer), Some(someDeal))
-    def capture(authorization: String = authorizationAsString) = gateway.capture(merchantAsString, authorization, somePayment.amount)
-    def voidAuthorization(authorization: String = authorizationAsString) = gateway.voidAuthorization(merchantAsString, authorization)
-
-    def lastRequest = {
-      val request = driver.lastRequest
-      request must not(beNull)
-      request
-    }
   }
-
 }

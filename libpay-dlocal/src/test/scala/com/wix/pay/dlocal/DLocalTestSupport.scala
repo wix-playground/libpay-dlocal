@@ -1,23 +1,25 @@
 package com.wix.pay.dlocal
 
-import com.google.api.client.http.UrlEncodedParser
-import com.wix.pay.testkit.LibPayTestSupport
-import com.wix.pay.{PaymentErrorException, PaymentRejectedException}
-import org.specs2.matcher.Matcher
-import org.specs2.matcher.MustThrownMatchers._
-import spray.http._
 
 import scala.util.{Random, Try}
+import org.specs2.matcher.Matcher
+import org.specs2.matcher.MustThrownMatchers._
+import akka.http.scaladsl.model._
+import com.google.api.client.http.UrlEncodedParser
+import com.wix.e2e.http.client.extractors.HttpMessageExtractors._
+import com.wix.pay.testkit.LibPayTestSupport
+import com.wix.pay.{PaymentErrorException, PaymentRejectedException}
+
 
 trait DLocalTestSupport extends LibPayTestSupport {
 
   val merchant = DLocalMerchant("some merchant id", "some sub code", "some@email.com")
-  val merchantAsString = DLocalMerchant.stringify(merchant)
+  val merchantAsString: String = DLocalMerchant.stringify(merchant)
 
   val authorization = DLocalAuthorization(authId = "some authorization id", invoiceId = "some invoice id", currency = "BRL")
-  val authorizationAsString = DLocalAuthorization.stringify(authorization)
+  val authorizationAsString: String = DLocalAuthorization.stringify(authorization)
 
-  val documentId = randomStringWithLength(26)
+  val documentId: String = randomStringWithLength(26)
 
   val someErrorCode = "300"
   val someErrorDescription = "Invalid params x_login"
@@ -42,7 +44,7 @@ trait DLocalTestSupport extends LibPayTestSupport {
   def beRequestThat(containsAllUrlEncodedParams: Seq[(String, String)]): Matcher[HttpRequest] = {
     def actualBody(request: HttpRequest): Seq[(String, Any)] = {
       val actualMap = new java.util.LinkedHashMap[String, java.util.List[_]]()
-      UrlEncodedParser.parse(request.entity.asString, actualMap)
+      UrlEncodedParser.parse(request.entity.extractAsString, actualMap)
       import scala.collection.JavaConverters._
       actualMap.asScala.mapValues(_.asScala.toSeq).toSeq
     }
@@ -52,10 +54,25 @@ trait DLocalTestSupport extends LibPayTestSupport {
     containAllOf(expectedContent) ^^ { r: HttpRequest => actualBody(r) }
   }
 
-  def notFail = not(throwA[Exception])
+  def notFail: AnyRef with Matcher[Any] = not(throwA[Exception])
   def beSucceedTryWith(value: String): Matcher[Try[String]] = beSuccessfulTry.withValue(value)
-  def failWith(message: String): Matcher[Try[String]] = beFailedTry.like { case e: PaymentErrorException => e.message must contain(message) }
-  def beRejectedWith(description: String): Matcher[Try[String]] = beFailedTry.like { case e: PaymentRejectedException => e.message must contain(description) }
-  def failWithMissingField(fieldName: String) = throwA[IllegalArgumentException](s"'$fieldName' must be given")
-  def beFailedTransactionWith(errorCode: String, errorDescription: String): Matcher[Try[String]] = failWith(s"Transaction failed($errorCode): $errorDescription")
+
+  def failWith(message: String): Matcher[Try[String]] = {
+    beFailedTry.like { case e: PaymentErrorException => e.message must contain(message) }
+  }
+
+  def beRejectedWith(description: String): Matcher[Try[String]] = {
+    beFailedTry.like { case e: PaymentRejectedException => e.message must contain(description) }
+  }
+
+  def failWithMissingField(fieldName: String): Matcher[Any] = {
+    throwA[IllegalArgumentException](s"'$fieldName' must be given")
+  }
+
+  def beFailedTransactionWith(errorCode: String, errorDescription: String): Matcher[Try[String]] = {
+    failWith(s"Transaction failed($errorCode): $errorDescription")
+  }
 }
+
+
+object DLocalTestSupport extends DLocalTestSupport

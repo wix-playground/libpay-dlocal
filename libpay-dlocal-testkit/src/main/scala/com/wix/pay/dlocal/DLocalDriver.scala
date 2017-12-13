@@ -1,17 +1,24 @@
 package com.wix.pay.dlocal
 
-import com.wix.hoopoe.http.testkit.EmbeddedHttpProbe
-import org.json4s.DefaultFormats
+
+import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.model._
+import org.json4s.{DefaultFormats, Formats}
 import org.json4s.native.Serialization
-import spray.http.Uri.Path
-import spray.http._
+import com.wix.e2e.http.api.StubWebServer
+import com.wix.e2e.http.server.WebServerFactory.aStubWebServer
 
-class DLocalDriver(probe: EmbeddedHttpProbe) {
-  def this(port: Int) = this(new EmbeddedHttpProbe(port, EmbeddedHttpProbe.NotFoundHandler))
 
-  def reset(): Unit = probe.reset()
-  def start(): Unit = probe.doStart()
-  def stop(): Unit = probe.doStop()
+class DLocalDriver(port: Int) {
+  implicit val formats: Formats = DefaultFormats
+  private val server: StubWebServer = aStubWebServer.onPort(port).build
+
+  def start(): Unit = server.start
+  def stop(): Unit = server.stop
+  def reset(): Unit = {
+    server.replaceWith()
+    server.clearRecordedRequests()
+  }
 
   def aSaleRequest() = new SaleRequest
   def anAuthorizeRequest() = new AuthorizeRequest
@@ -19,24 +26,25 @@ class DLocalDriver(probe: EmbeddedHttpProbe) {
   def aVoidAuthorizationRequest() = new VoidAuthorizationRequest
 
   abstract class BaseRequest {
-
     val path: String
 
     def returnsWithNotExpected(resultStatus: String, resultDescription: String)
-
     def failsWith(httpStatusCode: StatusCode): Unit = respondWith(Map.empty, httpStatusCode)
+    def failsWith(errorCode: String, description: String): Unit = {
+      respondWith(responseWithError(errorCode, description))
+    }
 
-    def failsWith(errorCode: String, description: String): Unit = respondWith(responseWithError(errorCode, description))
+    def getsRejectedWith(description: String): Unit = {
+      returnsWithNotExpected(resultStatus = "8", resultDescription = description)
+    }
 
-    def isRejectedWith(description: String): Unit = returnsWithNotExpected(resultStatus = "8", resultDescription = description)
-
-    def isPendingWith(description: String): Unit = returnsWithNotExpected(resultStatus = "7", resultDescription = description)
+    def getsPendingWith(description: String): Unit = {
+      returnsWithNotExpected(resultStatus = "7", resultDescription = description)
+    }
 
     protected def respondWith(content: Map[String, Any], status: StatusCode = StatusCodes.OK): Unit = {
-      implicit val formats = DefaultFormats
-
-      probe.handlers prepend {
-        case HttpRequest(_, uri, _, _, _) if uri.path == Path(path) =>
+      server.appendAll {
+        case HttpRequest(_, Path(`path`), _, _, _) =>
           HttpResponse(status = status, entity = Serialization.write(content))
       }
     }
@@ -98,8 +106,7 @@ class DLocalDriver(probe: EmbeddedHttpProbe) {
     "x_currency" -> "BRL",
     "cc_token" -> "",
     "x_amount_paid" -> "10.01",
-    "cc_descriptor" -> "Wix"
-  )
+    "cc_descriptor" -> "Wix")
 
   private def authOkResponse(resultStatus: String = "11",
                              resultDescription: String = "authorized",
@@ -117,8 +124,7 @@ class DLocalDriver(probe: EmbeddedHttpProbe) {
     "x_amount" -> "10.01",
     "x_currency" -> currency,
     "x_amount_paid" -> "10.01",
-    "cc_descriptor" -> "Wix"
-  )
+    "cc_descriptor" -> "Wix")
 
   private def captureOkResponse(resultStatus: String = "9",
                                 resultDescription: String = "approved",
@@ -134,8 +140,7 @@ class DLocalDriver(probe: EmbeddedHttpProbe) {
     "x_amount" -> "10.01",
     "x_currency" -> "BRL",
     "x_amount_captured" -> "10.01",
-    "x_document" -> documentId
-  )
+    "x_document" -> documentId)
 
   private def voidAuthOkResponse(resultStatus: String = "1",
                                  resultDescription: String = "cancelled",
@@ -146,14 +151,12 @@ class DLocalDriver(probe: EmbeddedHttpProbe) {
     "control" -> "39BD42F98E7E8D7D451C851A1D06B030D010AF93A721BDCBFCD7F4E7852E9955",
     "result" -> resultStatus,
     "x_invoice" -> invoiceId,
-    "x_auth_id" -> authId
-  )
+    "x_auth_id" -> authId)
 
   private def responseWithError(errorCode: String, description: String) = Map(
     "status" -> "ERROR",
     "desc" -> description,
-    "error_code" -> errorCode
-  )
+    "error_code" -> errorCode)
 
-  def lastRequest = probe.requests.last
+  def lastRequest: HttpRequest = server.recordedRequests.last
 }

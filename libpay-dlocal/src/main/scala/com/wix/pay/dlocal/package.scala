@@ -73,7 +73,7 @@ package object dlocal {
       "x_city" -> billingAddress.flatMap(_.city),
       "x_state" -> billingAddress.flatMap(_.state),
       "x_phone" -> customer.flatMap(_.phone),
-      "x_cpf" -> cardPublicFields.flatMap(_.holderId).filter(_ => dlocalCountry != DlocalAnyOtherCountry)
+      "x_cpf" -> cardPublicFields.flatMap(_.holderId)//.filter(_ => dlocalCountry != DlocalAnyOtherCountry)
     )
   }
 

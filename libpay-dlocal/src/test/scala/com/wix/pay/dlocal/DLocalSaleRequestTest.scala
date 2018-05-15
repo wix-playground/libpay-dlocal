@@ -78,8 +78,8 @@ class DLocalSaleRequestTest extends SpecWithJUnit with Matchers {
       requestWithNoHolderId.fields must not haveKey("x_cpf")
     }
 
-    "contain x_cpf for dlocal not presented countries even if provided" in new ctx {
-      requestFromGermany.fields must haveKey("x_cpf")
+    "not contain x_cpf in non-presented country" in new ctx {
+      requestFromGermany.fields must not haveKey("x_cpf")
     }
 
     "contain x_name" in new ctx {

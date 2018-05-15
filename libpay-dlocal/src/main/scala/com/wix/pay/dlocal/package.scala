@@ -9,7 +9,7 @@ package object dlocal {
   private val NotPresent = "NA"
   private val NotPresentEmail = "example@example.org"
 
-  private val DlocalPresentedCountries = Set("AR", "BR", "CL", "CO", "CN", "IN", "MX", "PE", "TN", "UY")
+  private val DlocalPresentedCountries = Set("AR", "BR", "CL", "CO", "CN", "IN", "MX", "PE", "TR", "UY")
   private val DlocalAnyOtherCountry = "XX"
 
   private[dlocal] val DlocalXCPF = "x_cpf"

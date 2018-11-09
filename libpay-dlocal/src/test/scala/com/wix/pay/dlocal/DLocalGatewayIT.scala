@@ -83,7 +83,20 @@ class DLocalGatewayIT extends SpecWithJUnit {
       sale() must beFailedTransactionWith(someErrorCode, someErrorDescription)
     }
 
+    "fail if dLocal answers with error and transaction" in new ctx {
+      val givenExpectedTransactionId = Some("someTransactionId")
+      givenSaleRequest failsWith(someErrorCode, someErrorDescription, givenExpectedTransactionId)
+
+      sale() must beFailedTransactionWith(someErrorCode, someErrorDescription, givenExpectedTransactionId)
+    }
+
     "fail if transaction rejected" in new ctx {
+      givenSaleRequest getsRejectedWith someRejectionDescription
+
+      sale() must beRejectedWith(someRejectionDescription)
+    }
+
+    "fail with transactionId if transaction rejected" in new ctx {
       givenSaleRequest getsRejectedWith someRejectionDescription
 
       sale() must beRejectedWith(someRejectionDescription)
@@ -104,7 +117,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
     "handle http error" in new ctx {
       givenSaleRequest failsWith StatusCodes.InternalServerError
 
-      sale() must failWith(internalServerErrorMessage)
+      sale() must failWith(internalServerErrorMessage, None)
     }
   }
 
@@ -134,11 +147,23 @@ class DLocalGatewayIT extends SpecWithJUnit {
       authorize() must beFailedTransactionWith(someErrorCode, someErrorDescription)
     }
 
+    "fail with transactionId if dLocal answers with error" in new ctx {
+      givenAuthorizeRequest failsWith(someErrorCode, someErrorDescription)
+
+      authorize() must beFailedTransactionWith(someErrorCode, someErrorDescription)
+    }
+
 
     "fail if transaction rejected" in new ctx {
       givenAuthorizeRequest getsRejectedWith someRejectionDescription
 
       authorize() must beRejectedWith(someRejectionDescription)
+    }
+
+    "fail with transactionId if transaction rejected" in new ctx {
+      givenAuthorizeRequest getsRejectedWith(someRejectionDescription, transactionId)
+
+      authorize() must beRejectedWith(someRejectionDescription, transactionId)
     }
 
     "fail if transaction pending" in new ctx {
@@ -147,11 +172,24 @@ class DLocalGatewayIT extends SpecWithJUnit {
       authorize() must failWith(pendingFlowIsNotSupportedMessage)
     }
 
+    "fail with transactionId if transaction pending" in new ctx {
+      givenAuthorizeRequest getsPendingWith(somePendingDescription, transactionId)
+
+      authorize() must failWith(pendingFlowIsNotSupportedMessage, transactionId)
+    }
+
     "fail if transaction is not authorized" in new ctx {
       givenAuthorizeRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
       authorize() must failWith(
         s"Transaction is not Authorized(11), but ($someTransactionStatusCode): $someDescription")
+    }
+
+    "fail with transactionId if transaction is not authorized" in new ctx {
+      givenAuthorizeRequest returnsWithNotExpected(someTransactionStatusCode, someDescription, transactionId)
+
+      authorize() must failWith(
+        s"Transaction is not Authorized(11), but ($someTransactionStatusCode): $someDescription", transactionId)
     }
 
     "handle http error" in new ctx {
@@ -191,16 +229,34 @@ class DLocalGatewayIT extends SpecWithJUnit {
       capture() must beFailedTransactionWith(someErrorCode, someErrorDescription)
     }
 
+    "fail with transactionId if dLocal answers with error" in new ctx {
+      givenCaptureRequest failsWith(someErrorCode, someErrorDescription, transactionId)
+
+      capture() must beFailedTransactionWith(someErrorCode, someErrorDescription, transactionId)
+    }
+
     "fail if transaction rejected" in new ctx {
       givenCaptureRequest getsRejectedWith someRejectionDescription
 
       capture() must beRejectedWith(someRejectionDescription)
     }
 
+    "fail with transactionId if transaction rejected" in new ctx {
+      givenCaptureRequest getsRejectedWith(someRejectionDescription, transactionId)
+
+      capture() must beRejectedWith(someRejectionDescription, transactionId)
+    }
+
     "fail if transaction is not approved" in new ctx {
       givenCaptureRequest returnsWithNotExpected(someTransactionStatusCode, someDescription)
 
       capture() must failWith(s"Transaction is not Approved(9), but ($someTransactionStatusCode): $someDescription")
+    }
+
+    "fail with transactionId if transaction is not approved" in new ctx {
+      givenCaptureRequest returnsWithNotExpected(someTransactionStatusCode, someDescription, transactionId)
+
+      capture() must failWith(s"Transaction is not Approved(9), but ($someTransactionStatusCode): $someDescription", transactionId)
     }
 
     "handle http error" in new ctx {
@@ -238,10 +294,22 @@ class DLocalGatewayIT extends SpecWithJUnit {
       voidAuthorization() must beFailedTransactionWith(someErrorCode, someErrorDescription)
     }
 
+    "fail with transactionId if dLocal answers with error" in new ctx {
+      givenVoidAuthorizationRequest failsWith(someErrorCode, someErrorDescription, transactionId)
+
+      voidAuthorization() must beFailedTransactionWith(someErrorCode, someErrorDescription, transactionId)
+    }
+
     "fail if transaction rejected" in new ctx {
       givenVoidAuthorizationRequest getsRejectedWith someRejectionDescription
 
       voidAuthorization() must beRejectedWith(someRejectionDescription)
+    }
+
+    "fail with transactionId if transaction rejected" in new ctx {
+      givenVoidAuthorizationRequest getsRejectedWith(someRejectionDescription, transactionId)
+
+      voidAuthorization() must beRejectedWith(someRejectionDescription, transactionId)
     }
 
     "fail if transaction is not canceled" in new ctx {
@@ -249,6 +317,13 @@ class DLocalGatewayIT extends SpecWithJUnit {
 
       voidAuthorization() must failWith(
         s"Transaction is not Canceled(1), but ($someTransactionStatusCode): $someDescription")
+    }
+
+    "fail with transactionId if transaction is not canceled" in new ctx {
+      givenVoidAuthorizationRequest returnsWithNotExpected(someTransactionStatusCode, someDescription, transactionId)
+
+      voidAuthorization() must failWith(
+        s"Transaction is not Canceled(1), but ($someTransactionStatusCode): $someDescription", transactionId)
     }
 
     "handle http error" in new ctx {
@@ -282,6 +357,7 @@ class DLocalGatewayIT extends SpecWithJUnit {
 
 
   trait ctx extends Scope {
+    val transactionId = Some("someTransactionId")
     driver.reset()
   }
 }

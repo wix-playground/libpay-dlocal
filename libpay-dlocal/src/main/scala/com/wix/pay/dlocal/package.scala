@@ -116,30 +116,32 @@ package object dlocal {
     }
 
     private def assertResponseIsOk(responseFields: ResponseFields): Unit = {
+      val transactionId  = responseFields("x_document")
+
       if (!responseFields("status").contains(SuccessResponseStatus)) {
         val errorCode = responseFields("error_code") || NotPresent
         val description = responseFields("desc") || NotPresent
         if (description contains DlocalXCPF) {
-          throw PaymentRejectedException(s"Transaction failed($errorCode): $description")
+          throw PaymentRejectedException(s"Transaction failed($errorCode): $description", transactionId = transactionId)
         } else {
-          throw PaymentErrorException(s"Transaction failed($errorCode): $description")
+          throw PaymentErrorException(s"Transaction failed($errorCode): $description", transactionId = transactionId)
         }
       }
 
       if (responseFields("result").contains(Rejected.dLocalCode)) {
         val description = responseFields("desc") || NotPresent
-        throw PaymentRejectedException(description)
+        throw PaymentRejectedException(description, transactionId = transactionId)
       }
 
       if (responseFields("result").contains(Pending.dLocalCode)) {
-        throw PaymentErrorException("Pending transactions are not supported")
+        throw PaymentErrorException("Pending transactions are not supported", transactionId = transactionId)
       }
 
       if (!responseFields("result").contains(expectedTransactionStatus.dLocalCode)) {
         val result = responseFields("result") || NotPresent
         val description = responseFields("desc") || NotPresent
         throw PaymentErrorException(s"Transaction is not $expectedTransactionStatus" +
-          s"(${expectedTransactionStatus.dLocalCode}), but ($result): $description")
+          s"(${expectedTransactionStatus.dLocalCode}), but ($result): $description", transactionId = transactionId)
       }
     }
   }

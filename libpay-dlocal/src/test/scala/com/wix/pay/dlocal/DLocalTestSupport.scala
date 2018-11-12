@@ -1,14 +1,15 @@
 package com.wix.pay.dlocal
 
 
-import scala.util.{Random, Try}
-import org.specs2.matcher.Matcher
-import org.specs2.matcher.MustThrownMatchers._
 import akka.http.scaladsl.model._
 import com.google.api.client.http.UrlEncodedParser
 import com.wix.e2e.http.client.extractors.HttpMessageExtractors._
 import com.wix.pay.testkit.LibPayTestSupport
 import com.wix.pay.{PaymentErrorException, PaymentRejectedException}
+import org.specs2.matcher.Matcher
+import org.specs2.matcher.MustThrownMatchers._
+
+import scala.util.{Random, Try}
 
 
 trait DLocalTestSupport extends LibPayTestSupport {
@@ -55,22 +56,30 @@ trait DLocalTestSupport extends LibPayTestSupport {
   }
 
   def notFail: AnyRef with Matcher[Any] = not(throwA[Exception])
+
   def beSucceedTryWith(value: String): Matcher[Try[String]] = beSuccessfulTry.withValue(value)
 
-  def failWith(message: String): Matcher[Try[String]] = {
-    beFailedTry.like { case e: PaymentErrorException => e.message must contain(message) }
+  def failWith(message: String, documentId: Option[String] = None): Matcher[Try[String]] = {
+    beFailedTry.like {
+      case e: PaymentErrorException =>
+        e.message must contain(message)
+        e.transactionId must equalTo(documentId)
+    }
   }
 
-  def beRejectedWith(description: String): Matcher[Try[String]] = {
-    beFailedTry.like { case e: PaymentRejectedException => e.message must contain(description) }
+  def beRejectedWith(description: String, documentId: Option[String] = None): Matcher[Try[String]] = {
+    beFailedTry.like { case e: PaymentRejectedException =>
+      e.message must contain(description)
+      e.transactionId must equalTo(documentId)
+    }
   }
 
   def failWithMissingField(fieldName: String): Matcher[Any] = {
     throwA[IllegalArgumentException](s"'$fieldName' must be given")
   }
 
-  def beFailedTransactionWith(errorCode: String, errorDescription: String): Matcher[Try[String]] = {
-    failWith(s"Transaction failed($errorCode): $errorDescription")
+  def beFailedTransactionWith(errorCode: String, errorDescription: String, documentId: Option[String] = None): Matcher[Try[String]] = {
+    failWith(s"Transaction failed($errorCode): $errorDescription", documentId)
   }
 }
 
